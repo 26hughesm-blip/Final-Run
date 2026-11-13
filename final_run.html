@@ -1,0 +1,2235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Final Run</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .btn-bounce:active {
+            transform: scale(0.95);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.5);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white h-screen w-screen overflow-hidden flex flex-col items-center justify-center p-2 sm:p-4">
+
+    <!-- Compact Main Game Container -->
+    <div class="w-full max-w-4xl h-full max-h-[640px] flex flex-col bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 overflow-hidden relative">
+
+        <!-- Top Compact HUD Bar -->
+        <header class="w-full px-3 py-2 bg-slate-900/95 border-b border-slate-800 flex items-center justify-between gap-2 z-20 shrink-0">
+            <!-- Brand & World/Level Badge -->
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow text-slate-900 font-bold text-base">
+                    F
+                </div>
+                <div>
+                    <h1 class="text-sm sm:text-base font-bold leading-none text-amber-400">Final Run</h1>
+                    <p id="worldSubtext" class="text-[10px] text-slate-400 leading-tight">Stage 1 of 100</p>
+                </div>
+            </div>
+
+            <!-- Level, Fireball Counter & Coins Pill -->
+            <div class="flex items-center gap-1.5 sm:gap-2">
+                <!-- Level Select Button -->
+                <button id="openLevelSelectBtn" class="btn-bounce px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-sky-300 rounded-lg border border-slate-700 font-semibold text-xs flex items-center gap-1 transition cursor-pointer" title="Select Level (1-100)">
+                    <span>LVL</span>
+                    <span id="hudLevel" class="text-white font-bold">1</span>
+                    <span class="text-[10px] text-slate-400">▼</span>
+                </button>
+
+                <!-- Always-Visible Fireball Counter -->
+                <div id="hudFireballBox" class="px-2.5 py-1 bg-slate-800/90 text-slate-400 rounded-lg border border-slate-700 font-semibold text-xs flex items-center gap-1 transition-all" title="Fireball Cannon Shots (Press F / Shift)">
+                    <span>🔥</span>
+                    <span id="hudFireballs" class="font-bold">0</span>
+                </div>
+
+                <!-- Coins Counter -->
+                <div class="px-2.5 py-1 bg-amber-500/15 text-amber-300 rounded-lg border border-amber-500/30 font-semibold text-xs flex items-center gap-1">
+                    <span>🪙</span>
+                    <span id="hudCoins">0</span>
+                </div>
+
+                <!-- Context-Aware Shop Button -->
+                <button id="openShopBtn" class="btn-bounce px-2.5 py-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg shadow font-semibold text-xs flex items-center gap-1 transition cursor-pointer">
+                    <span>🛍️</span>
+                    <span class="hidden sm:inline">Shop</span>
+                </button>
+
+                <!-- Audio Toggle -->
+                <button id="muteBtn" class="btn-bounce p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 text-slate-300 transition cursor-pointer" title="Toggle Sound">
+                    <span id="muteIcon" class="text-xs">🔊</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Compact Gameplay Screen Frame -->
+        <main class="relative flex-1 w-full overflow-hidden bg-sky-400">
+            <canvas id="gameCanvas"></canvas>
+
+            <!-- Active Buffs & Checkpoint Status Toast -->
+            <div id="statusToast" class="hidden absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-slate-900/85 border border-slate-700 text-xs font-semibold text-amber-300 shadow-lg pointer-events-none z-10">
+            </div>
+
+            <!-- Touch Controls for Mobile / Tablet -->
+            <div id="mobileControls" class="md:hidden absolute bottom-3 left-3 right-3 flex justify-between items-end pointer-events-none z-10">
+                <div class="flex gap-2 pointer-events-auto">
+                    <button id="btnLeft" class="w-12 h-12 rounded-xl bg-slate-900/75 border border-white/20 text-white text-lg flex items-center justify-center active:bg-amber-500/70">◀</button>
+                    <button id="btnRight" class="w-12 h-12 rounded-xl bg-slate-900/75 border border-white/20 text-white text-lg flex items-center justify-center active:bg-amber-500/70">▶</button>
+                </div>
+                <div class="flex gap-2 pointer-events-auto">
+                    <button id="btnShoot" class="w-12 h-12 rounded-xl bg-orange-600/85 border border-orange-300/40 text-white font-bold text-base flex items-center justify-center active:bg-orange-500">🔥</button>
+                    <button id="btnJump" class="w-14 h-12 rounded-xl bg-amber-500/85 border border-white/30 text-slate-900 font-bold text-sm flex items-center justify-center active:bg-amber-400">JUMP</button>
+                </div>
+            </div>
+
+            <!-- Start Screen Overlay -->
+            <div id="startOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center z-20">
+                <div class="max-w-sm w-full bg-slate-900 border border-slate-700 p-5 rounded-2xl shadow-2xl">
+                    <div class="w-14 h-14 mx-auto mb-2 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
+                        <span class="text-2xl">🏃‍♂️</span>
+                    </div>
+                    <h2 class="text-2xl font-bold text-white mb-1">Final Run</h2>
+                    <p class="text-slate-300 text-xs mb-4 leading-relaxed">
+                        Conquer 100 levels across 10 unique worlds! Collect Bronze/Silver/Gold Fireball Cannons, hop into Glass Balls, and defeat escalating bosses every 10th level!
+                    </p>
+                    <div class="flex flex-col gap-2">
+                        <button id="startBtn" class="btn-bounce w-full py-2.5 px-4 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-900 font-bold text-base rounded-xl shadow-lg transition cursor-pointer">
+                            Play Level <span id="startLevelNum">1</span> ▶
+                        </button>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="startLevelSelectBtn" class="btn-bounce py-2 px-3 bg-slate-800 hover:bg-slate-700 text-sky-300 font-semibold text-xs rounded-xl border border-slate-700 transition cursor-pointer">
+                                📋 Levels (1–100)
+                            </button>
+                            <button id="startShopBtn" class="btn-bounce py-2 px-3 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 font-semibold text-xs rounded-xl border border-purple-500/40 transition cursor-pointer">
+                                🛍️ Skins Shop
+                            </button>
+                        </div>
+                    </div>
+                    <p class="mt-3 text-[10px] text-slate-400">Move: A/D or Arrows • Jump: W/Space • Fireball: F / Shift</p>
+                </div>
+            </div>
+
+            <!-- Level Victory / Game Over Overlay -->
+            <div id="endOverlay" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center z-20">
+                <div class="max-w-xs w-full bg-slate-900 border border-slate-700 p-5 rounded-2xl shadow-2xl">
+                    <div id="endIcon" class="text-4xl mb-2">🏆</div>
+                    <h2 id="endTitle" class="text-2xl font-bold text-white mb-1">Level Cleared!</h2>
+                    <p id="endSubtitle" class="text-slate-300 text-xs mb-4">You unlocked the Secret Door!</p>
+                    <div class="flex flex-col gap-2">
+                        <button id="nextLevelBtn" class="btn-bounce w-full py-2.5 px-4 bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-bold text-sm rounded-xl shadow-lg transition cursor-pointer">
+                            Next Level ➔
+                        </button>
+                        <button id="retryBtn" class="btn-bounce w-full py-2.5 px-4 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-bold text-sm rounded-xl shadow-lg transition cursor-pointer">
+                            Try Again ↻
+                        </button>
+                        <div class="grid grid-cols-2 gap-2 mt-1">
+                            <button id="openShopEndBtn" class="btn-bounce py-2 px-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold text-xs rounded-xl shadow transition cursor-pointer">
+                                🛍️ Shop
+                            </button>
+                            <button id="endLevelSelectBtn" class="btn-bounce py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 transition cursor-pointer">
+                                📋 Levels
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 100-Level Select Modal -->
+            <div id="levelSelectModal" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 z-30">
+                <div class="w-full max-w-2xl h-full max-h-[520px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+                        <div>
+                            <h3 class="text-base font-bold text-white">Select Stage (100 Levels • 10 Worlds)</h3>
+                            <p class="text-[11px] text-slate-400">👑 Boss every 10th level • 🔮 3 Glass Ball driving tracks per world</p>
+                        </div>
+                        <button id="closeLevelSelectBtn" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-bold cursor-pointer">✕</button>
+                    </div>
+                    <div id="levelGrid" class="p-3 overflow-y-auto grid grid-cols-5 sm:grid-cols-10 gap-1.5 flex-1 content-start">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Skins Shop Modal -->
+            <div id="shopModal" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 z-30">
+                <div class="w-full max-w-lg max-h-[520px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+                        <div>
+                            <h3 class="text-base font-bold text-white">Final Run Shop</h3>
+                            <p class="text-[11px] text-slate-400">Unlock Runner Skins & Gun Designs with your coins!</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-1 bg-amber-500/20 text-amber-300 rounded-lg font-bold text-xs border border-amber-500/30">
+                                🪙 <span id="shopCoinsDisplay">0</span>
+                            </span>
+                            <button id="closeShopBtn" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center font-bold cursor-pointer">✕</button>
+                        </div>
+                    </div>
+                    <div class="px-4 pt-2.5 pb-1 flex gap-2 shrink-0">
+                        <button id="tabRunnerSkins" class="btn-bounce flex-1 py-1.5 rounded-xl font-bold text-xs bg-amber-400 text-slate-950 transition cursor-pointer">
+                            🏃 Runner Skins (10)
+                        </button>
+                        <button id="tabGunSkins" class="btn-bounce flex-1 py-1.5 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 hover:bg-slate-700 transition cursor-pointer">
+                            🔫 Gun Designs (10)
+                        </button>
+                    </div>
+                    <div id="shopGrid" class="p-3 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        <!-- Skins & Gun Designs generated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- Audio Engine (Web Audio API Synthesizer) ---
+        class SoundFX {
+            static ctx = null;
+            static muted = false;
+
+            static init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            static playTone(freq, type, duration, vol = 0.12, slideFreq = null) {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                if (slideFreq) {
+                    osc.frequency.exponentialRampToValueAtTime(slideFreq, this.ctx.currentTime + duration);
+                }
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            }
+
+            static playJump() { this.playTone(260, 'sine', 0.16, 0.12, 520); }
+            static playCoin() {
+                this.playTone(987.77, 'sine', 0.08, 0.1);
+                setTimeout(() => this.playTone(1318.51, 'sine', 0.14, 0.1), 55);
+            }
+            static playStomp() { this.playTone(180, 'square', 0.12, 0.12, 70); }
+            static playFireball() { this.playTone(440, 'sawtooth', 0.15, 0.12, 110); }
+            static playPowerup() {
+                this.playTone(440, 'triangle', 0.09, 0.12);
+                setTimeout(() => this.playTone(659.25, 'triangle', 0.09, 0.12), 70);
+                setTimeout(() => this.playTone(880, 'triangle', 0.18, 0.12), 140);
+            }
+            static playCheckpoint() {
+                this.playTone(523.25, 'sine', 0.1, 0.12);
+                setTimeout(() => this.playTone(783.99, 'sine', 0.18, 0.12), 80);
+            }
+            static playDoorSlam() {
+                this.playTone(110, 'sawtooth', 0.35, 0.25, 36);
+            }
+            static playWin() {
+                [523.25, 659.25, 783.99, 1046.5].forEach((n, i) => {
+                    setTimeout(() => this.playTone(n, 'triangle', 0.18, 0.14), i * 85);
+                });
+            }
+            static playHit() { this.playTone(190, 'sawtooth', 0.25, 0.16, 55); }
+        }
+
+        // --- Deterministic Seeded Random Helper ---
+        function seededRandom(seed) {
+            let s = seed % 2147483647;
+            if (s <= 0) s += 2147483646;
+            return function() {
+                s = (s * 16807) % 2147483647;
+                return (s - 1) / 2147483646;
+            };
+        }
+
+        // --- 10 World Themes (Every 10 Levels) ---
+        const WORLD_THEMES = [
+            { name: 'Sunny Day', skyTop: '#38bdf8', skyBot: '#bae6fd', sunColor: '#fde047', isNight: false, hillBack: '#7dd3fc', hillFront: '#4ade80', platBody: '#92400e', platTop: '#22c55e', platBorder: '#15803d', coinMain: '#facc15', coinEdge: '#ca8a04' },
+            { name: 'Sunset Hills', skyTop: '#f97316', skyBot: '#fed7aa', sunColor: '#fef08a', isNight: false, hillBack: '#fdba74', hillFront: '#fb923c', platBody: '#7c2d12', platTop: '#f59e0b', platBorder: '#b45309', coinMain: '#fef08a', coinEdge: '#eab308' },
+            { name: 'Midnight Cavern', skyTop: '#0f172a', skyBot: '#1e293b', sunColor: '#f8fafc', isNight: true, hillBack: '#1e293b', hillFront: '#334155', platBody: '#334155', platTop: '#38bdf8', platBorder: '#0284c7', coinMain: '#facc15', coinEdge: '#ca8a04' },
+            { name: 'Emerald Jungle', skyTop: '#059669', skyBot: '#a7f3d0', sunColor: '#fef08a', isNight: false, hillBack: '#34d399', hillFront: '#10b981', platBody: '#78350f', platTop: '#16a34a', platBorder: '#14532d', coinMain: '#facc15', coinEdge: '#ca8a04' },
+            { name: 'Volcanic Core', skyTop: '#450a0a', skyBot: '#991b1b', sunColor: '#fb923c', isNight: true, hillBack: '#7f1d1d', hillFront: '#991b1b', platBody: '#1c1917', platTop: '#ef4444', platBorder: '#b91c1c', coinMain: '#fde047', coinEdge: '#d97706' },
+            { name: 'Neon Cybercity', skyTop: '#090d16', skyBot: '#1e1b4b', sunColor: '#22d3ee', isNight: true, hillBack: '#1e1b4b', hillFront: '#312e81', platBody: '#0f172a', platTop: '#22d3ee', platBorder: '#0891b2', coinMain: '#f472b6', coinEdge: '#db2777' },
+            { name: 'Frozen Glade', skyTop: '#0284c7', skyBot: '#e0f2fe', sunColor: '#ffffff', isNight: false, hillBack: '#bae6fd', hillFront: '#7dd3fc', platBody: '#1e3a8a', platTop: '#e0f2fe', platBorder: '#38bdf8', coinMain: '#facc15', coinEdge: '#ca8a04' },
+            { name: 'Golden Dunes', skyTop: '#d97706', skyBot: '#fef3c7', sunColor: '#ffffff', isNight: false, hillBack: '#fde68a', hillFront: '#fcd34d', platBody: '#92400e', platTop: '#f59e0b', platBorder: '#b45309', coinMain: '#38bdf8', coinEdge: '#0284c7' },
+            { name: 'Toxic Wasteland', skyTop: '#1a2e05', skyBot: '#3f6212', sunColor: '#bef264', isNight: true, hillBack: '#365314', hillFront: '#4d7c0f', platBody: '#27272a', platTop: '#a3e635', platBorder: '#65a30d', coinMain: '#facc15', coinEdge: '#ca8a04' },
+            { name: 'Deep Space', skyTop: '#020617', skyBot: '#0f172a', sunColor: '#e879f9', isNight: true, hillBack: '#1e1b4b', hillFront: '#2e1065', platBody: '#1e293b', platTop: '#c084fc', platBorder: '#9333ea', coinMain: '#fef08a', coinEdge: '#eab308' }
+        ];
+
+        function getThemeForLevel(lvl) {
+            const worldIdx = Math.min(WORLD_THEMES.length - 1, Math.floor((lvl - 1) / 10));
+            return WORLD_THEMES[worldIdx];
+        }
+
+        // --- SKINS SHOP CATALOG (10 Runner Skins) ---
+        const SKINS = [
+            { id: 'classic', name: 'Classic Bello', price: 0, body: '#3b82f6', accent: '#60a5fa', eyes: '#ffffff', badge: '🏃' },
+            { id: 'crimson', name: 'Crimson Dash', price: 150, body: '#ef4444', accent: '#fca5a5', eyes: '#fef08a', badge: '🔥' },
+            { id: 'emerald', name: 'Emerald Ninja', price: 300, body: '#10b981', accent: '#6ee7b7', eyes: '#ffffff', badge: '🍃' },
+            { id: 'cyber', name: 'Cyber Neon', price: 800, body: '#0f172a', accent: '#22d3ee', eyes: '#f472b6', badge: '⚡' },
+            { id: 'golden', name: 'Golden King', price: 1200, body: '#f59e0b', accent: '#fef08a', eyes: '#ffffff', badge: '👑' },
+            { id: 'shadow', name: 'Shadow Phantom', price: 1500, body: '#1e1b4b', accent: '#a855f7', eyes: '#e879f9', badge: '👻' },
+            { id: 'arctic', name: 'Arctic Frost', price: 1800, body: '#0284c7', accent: '#bae6fd', eyes: '#ffffff', badge: '❄️' },
+            { id: 'magma', name: 'Magma Titan', price: 2200, body: '#7f1d1d', accent: '#f97316', eyes: '#fef08a', badge: '🌋' },
+            { id: 'cosmic', name: 'Cosmic Astronaut', price: 2600, body: '#f8fafc', accent: '#38bdf8', eyes: '#0f172a', badge: '🚀' },
+            { id: 'galaxy', name: 'Galaxy Void', price: 3200, body: '#312e81', accent: '#f43f5e', eyes: '#67e8f9', badge: '🌌' }
+        ];
+
+        // --- GUN DESIGN SHOP CATALOG (10 Gun Skins) ---
+        const GUN_SKINS = [
+            { id: 'standard_silver', name: 'Standard Silver', price: 0, body: '#64748b', trim: '#e2e8f0', core: '#f8fafc', outer: '#38bdf8', badge: '🔫', style: 'standard' },
+            { id: 'crimson_viper', name: 'Crimson Viper', price: 120, body: '#991b1b', trim: '#fca5a5', core: '#fef08a', outer: '#ef4444', badge: '🐍', style: 'standard' },
+            { id: 'emerald_pulse', name: 'Emerald Pulse', price: 240, body: '#065f46', trim: '#6ee7b7', core: '#ecfdf5', outer: '#10b981', badge: '💚', style: 'plasma' },
+            { id: 'cobalt_rail', name: 'Cobalt Railgun', price: 380, body: '#1e3a8a', trim: '#60a5fa', core: '#e0f2fe', outer: '#3b82f6', badge: '💠', style: 'heavy' },
+            { id: 'solar_flare', name: 'Solar Flare', price: 520, body: '#b45309', trim: '#fde047', core: '#ffffff', outer: '#f97316', badge: '☀️', style: 'standard' },
+            { id: 'neon_cyber', name: 'Neon Cyber-X', price: 700, body: '#0f172a', trim: '#22d3ee', core: '#f472b6', outer: '#06b6d4', badge: '⚡', style: 'plasma' },
+            { id: 'amethyst_void', name: 'Amethyst Void', price: 900, body: '#4c1d95', trim: '#d8b4fe', core: '#fae8ff', outer: '#a855f7', badge: '🔮', style: 'plasma' },
+            { id: 'arctic_ice', name: 'Glacier Cannon', price: 1150, body: '#0369a1', trim: '#e0f2fe', core: '#ffffff', outer: '#7dd3fc', badge: '🧊', style: 'heavy' },
+            { id: 'royal_gold', name: 'Royal Dragon', price: 1500, body: '#d97706', trim: '#fef08a', core: '#fffbeb', outer: '#facc15', badge: '🐉', style: 'heavy' },
+            { id: 'obsidian_omega', name: 'Obsidian Omega', price: 2000, body: '#090d16', trim: '#f43f5e', core: '#ffe4e6', outer: '#e11d48', badge: '💀', style: 'heavy' }
+        ];
+
+        // --- Persistent Player Save Data ---
+        let coins = parseInt(localStorage.getItem('bello_coins') || '0', 10);
+        let maxUnlockedLevel = Math.min(100, Math.max(1, parseInt(localStorage.getItem('bello_max_level') || '1', 10)));
+        let unlockedSkins = JSON.parse(localStorage.getItem('bello_unlocked_skins') || '["classic"]').filter(id => id !== 'minion');
+        let equippedSkinId = localStorage.getItem('bello_equipped_skin') || 'classic';
+        if (equippedSkinId === 'minion') equippedSkinId = 'classic';
+        let unlockedGunSkins = JSON.parse(localStorage.getItem('bello_unlocked_guns') || '["standard_silver"]');
+        let equippedGunSkinId = localStorage.getItem('bello_equipped_gun') || 'standard_silver';
+        let activeShopTab = 'runners'; // 'runners' | 'guns'
+
+        function saveProgress() {
+            localStorage.setItem('bello_coins', coins.toString());
+            localStorage.setItem('bello_max_level', maxUnlockedLevel.toString());
+            localStorage.setItem('bello_unlocked_skins', JSON.stringify(unlockedSkins));
+            localStorage.setItem('bello_equipped_skin', equippedSkinId);
+            localStorage.setItem('bello_unlocked_guns', JSON.stringify(unlockedGunSkins));
+            localStorage.setItem('bello_equipped_gun', equippedGunSkinId);
+            updateHUD();
+        }
+
+        // --- Canvas & Game State ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const TOTAL_LEVELS = 100;
+
+        let currentLevel = 1;
+        let gameState = 'START'; // START, PLAYING, FINISHING, WON, GAMEOVER
+        let cameraX = 0;
+        let screenShake = 0;
+        let finishTimer = 0;
+
+        // Checkpoint & Same-Level Persistence State
+        let activeCheckpointIndex = -1;
+        let checkpointPos = { x: 80, y: 200 };
+        let collectedCoinIds = new Set();
+        let killedEnemyIds = new Set();
+        let collectedPowerupIds = new Set();
+        let savedCannonState = { shots: 0, tier: null };
+
+        // Level Entities
+        let platforms = [];
+        let ramps = [];
+        let spikes = [];
+        let coinsList = [];
+        let enemies = [];
+        let powerups = [];
+        let playerFireballs = [];
+        let checkpointFlags = [];
+        let glassBallPickup = null;
+        let boss = null;
+        let finishDoor = null;
+        let activeTheme = WORLD_THEMES[0];
+
+        // Input States
+        const keys = { left: false, right: false, up: false };
+        let jumpPressed = false;
+
+        // --- Toast Notification Helper ---
+        let toastTimeout = null;
+        function showToast(msg, duration = 2200) {
+            const toast = document.getElementById('statusToast');
+            toast.textContent = msg;
+            toast.classList.remove('hidden');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('hidden');
+            }, duration);
+        }
+
+        // --- Player Object (Articulated Human Runner) ---
+        const player = {
+            x: 80,
+            y: 200,
+            w: 28,
+            h: 44,
+            vx: 0,
+            vy: 0,
+            baseSpeed: 4.5,
+            jumpForce: -11.4,
+            gravity: 0.56,
+            onGround: false,
+            facing: 1,
+            runCycle: 0,
+            invincibleTimer: 0,
+            fireballShots: 0,
+            cannonTier: null, // 'bronze' | 'silver' | 'gold'
+            fireCooldown: 0,
+            inGlassBall: false,
+            ballRotation: 0,
+            ridingPlatform: null,
+
+            reset(x, y, restoreCannon = false) {
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.onGround = false;
+                this.facing = 1;
+                this.invincibleTimer = 0;
+                this.fireCooldown = 0;
+                this.inGlassBall = false;
+                this.ballRotation = 0;
+                this.ridingPlatform = null;
+
+                if (restoreCannon && savedCannonState.shots > 0) {
+                    this.fireballShots = savedCannonState.shots;
+                    this.cannonTier = savedCannonState.tier;
+                } else {
+                    this.fireballShots = 0;
+                    this.cannonTier = null;
+                }
+                updateHUD();
+            },
+
+            shootFireball() {
+                if (gameState !== 'PLAYING') return;
+                if (this.fireballShots <= 0 || this.fireCooldown > 0) return;
+
+                this.fireballShots--;
+                this.fireCooldown = 14;
+                updateHUD();
+                SoundFX.playFireball();
+
+                const gunSkin = GUN_SKINS.find(g => g.id === equippedGunSkinId) || GUN_SKINS[0];
+                const colors = { core: gunSkin.core, outer: gunSkin.outer };
+                const fx = this.facing === 1 ? this.x + this.w + 4 : this.x - 14;
+                const fy = this.y + this.h * 0.44;
+                playerFireballs.push(new PlayerFireball(fx, fy, this.facing * 9.5, colors));
+
+                if (this.fireballShots === 0) {
+                    this.cannonTier = null;
+                    updateHUD();
+                    showToast('🔥 Fireball Cannon depleted!', 1500);
+                }
+            },
+
+            draw(ctx) {
+                const skin = SKINS.find(s => s.id === equippedSkinId) || SKINS[0];
+                const cx = this.x + this.w / 2;
+                const cy = this.y + this.h / 2;
+                const swing = this.onGround ? Math.sin(this.runCycle) * 6 : 4;
+
+                ctx.save();
+                ctx.translate(cx, cy);
+
+                // Invincibility Aura
+                if (this.invincibleTimer > 0) {
+                    ctx.save();
+                    ctx.strokeStyle = `hsla(${(Date.now() / 4) % 360}, 95%, 65%, 0.9)`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 28, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                ctx.save();
+                ctx.scale(this.facing, 1);
+
+                // Articulated Human Runner Character
+                // Back Arm
+                ctx.strokeStyle = skin.accent;
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(-2, -4);
+                ctx.lineTo(-7 - swing * 0.6, 5);
+                ctx.stroke();
+
+                // Legs & Sneakers
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 4.5;
+                ctx.beginPath();
+                ctx.moveTo(-3, 8);
+                ctx.lineTo(-5 - swing, 20);
+                ctx.moveTo(3, 8);
+                ctx.lineTo(5 + swing, 20);
+                ctx.stroke();
+
+                ctx.fillStyle = skin.accent;
+                ctx.fillRect(-8 - swing, 19, 7, 3);
+                ctx.fillRect(2 + swing, 19, 7, 3);
+
+                // Torso Shirt
+                ctx.fillStyle = skin.body;
+                ctx.beginPath();
+                ctx.roundRect(-8, -7, 16, 17, 5);
+                ctx.fill();
+
+                // Chest Stripe
+                ctx.fillStyle = skin.accent;
+                ctx.fillRect(-7, -1, 14, 3);
+
+                // Head
+                ctx.fillStyle = '#fed7aa';
+                ctx.beginPath();
+                ctx.arc(0, -14, 7.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Hair / Headband
+                ctx.fillStyle = skin.body;
+                ctx.beginPath();
+                ctx.arc(0, -16, 7.5, Math.PI, 0);
+                ctx.fill();
+                ctx.fillStyle = skin.accent;
+                ctx.fillRect(-7.5, -17, 15, 2.5);
+
+                // Eye
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(3.5, -14, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Front Arm (Reaches forward to hold gun when armed)
+                ctx.strokeStyle = '#fed7aa';
+                ctx.lineWidth = 3.8;
+                ctx.beginPath();
+                ctx.moveTo(2, -4);
+                if (this.fireballShots > 0) {
+                    ctx.lineTo(8, 1);
+                } else {
+                    ctx.lineTo(6 + swing * 0.6, 5);
+                }
+                ctx.stroke();
+
+                // Equipped Held Fireball Blaster (Uses Selected Gun Design)
+                if (this.fireballShots > 0) {
+                    const gunSkin = GUN_SKINS.find(g => g.id === equippedGunSkinId) || GUN_SKINS[0];
+
+                    // Grip held by hand
+                    ctx.fillStyle = '#1e293b';
+                    ctx.beginPath();
+                    ctx.roundRect(6, 0, 5, 7, 1.5);
+                    ctx.fill();
+
+                    if (gunSkin.style === 'heavy') {
+                        // Heavy Dual-Barrel Design
+                        ctx.fillStyle = gunSkin.body;
+                        ctx.beginPath();
+                        ctx.roundRect(3, -6, 18, 8, 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = gunSkin.trim;
+                        ctx.fillRect(5, -7.5, 13, 2);
+                        ctx.fillRect(5, 0, 11, 2);
+
+                        ctx.fillStyle = '#0f172a';
+                        ctx.fillRect(20, -5, 3, 2.5);
+                        ctx.fillRect(20, -1.5, 3, 2.5);
+                    } else if (gunSkin.style === 'plasma') {
+                        // Sleek Plasma Core Design
+                        ctx.fillStyle = gunSkin.body;
+                        ctx.beginPath();
+                        ctx.roundRect(4, -5.5, 17, 6.5, 3);
+                        ctx.fill();
+
+                        ctx.fillStyle = gunSkin.outer;
+                        ctx.beginPath();
+                        ctx.roundRect(8, -3.5, 8, 2.5, 1);
+                        ctx.fill();
+
+                        ctx.fillStyle = gunSkin.trim;
+                        ctx.fillRect(19, -4.5, 3, 4.5);
+                    } else {
+                        // Standard Tactical Blaster Design
+                        ctx.fillStyle = gunSkin.body;
+                        ctx.beginPath();
+                        ctx.roundRect(4, -5, 16, 6, 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = gunSkin.trim;
+                        ctx.fillRect(6, -6.5, 11, 2);
+
+                        ctx.fillStyle = '#0f172a';
+                        ctx.fillRect(19, -4, 3, 4);
+                    }
+                }
+
+                ctx.restore();
+
+                // Glass Ball Shell Overlay when Driving
+                if (this.inGlassBall) {
+                    ctx.save();
+                    ctx.rotate(this.ballRotation);
+                    const ballGrad = ctx.createRadialGradient(-8, -8, 4, 0, 0, 28);
+                    ballGrad.addColorStop(0, 'rgba(255, 255, 255, 0.55)');
+                    ballGrad.addColorStop(0.7, 'rgba(56, 189, 248, 0.22)');
+                    ballGrad.addColorStop(1, 'rgba(14, 165, 233, 0.65)');
+                    ctx.fillStyle = ballGrad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 28, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#bae6fd';
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 22, -0.5, 0.8);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                ctx.restore();
+            }
+        };
+
+        // --- Game Entity Classes ---
+        class Platform {
+            constructor(x, y, w, h, moveType = null, moveRange = 0, moveSpeed = 0) {
+                this.startX = x;
+                this.startY = y;
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = Math.min(h, 30); // Sleek Floating Platform thickness
+                this.moveType = moveType; // null, 'H', 'V'
+                this.moveRange = moveRange;
+                this.moveSpeed = moveSpeed;
+                this.phase = 0;
+                this.dx = 0;
+                this.dy = 0;
+                this.isDrivingTrack = false;
+            }
+
+            update() {
+                if (!this.moveType) return;
+                const prevX = this.x;
+                const prevY = this.y;
+                this.phase += this.moveSpeed;
+                if (this.moveType === 'H') {
+                    this.x = this.startX + Math.sin(this.phase) * this.moveRange;
+                } else if (this.moveType === 'V') {
+                    this.y = this.startY + Math.sin(this.phase) * this.moveRange;
+                }
+                this.dx = this.x - prevX;
+                this.dy = this.y - prevY;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                // Floating island shadow & main rock/earth body
+                ctx.fillStyle = this.isDrivingTrack ? '#1e293b' : activeTheme.platBody;
+                ctx.beginPath();
+                ctx.roundRect(this.x, this.y, this.w, this.h, [6, 6, 12, 12]);
+                ctx.fill();
+
+                // Underside depth highlight on floating ledge
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+                ctx.beginPath();
+                ctx.roundRect(this.x + 4, this.y + this.h - 7, Math.max(4, this.w - 8), 5, 4);
+                ctx.fill();
+
+                // Top turf / track layer
+                ctx.fillStyle = this.isDrivingTrack ? '#38bdf8' : activeTheme.platTop;
+                ctx.beginPath();
+                ctx.roundRect(this.x, this.y, this.w, 8, [6, 6, 2, 2]);
+                ctx.fill();
+
+                // Crisp rim highlight
+                ctx.strokeStyle = this.isDrivingTrack ? '#0284c7' : activeTheme.platBorder;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(this.x + 3, this.y + 8);
+                ctx.lineTo(this.x + this.w - 3, this.y + 8);
+                ctx.stroke();
+
+                // Thruster lights on moving platforms
+                if (this.moveType) {
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.beginPath();
+                    ctx.arc(this.x + 12, this.y + this.h - 5, 3, 0, Math.PI * 2);
+                    ctx.arc(this.x + this.w - 12, this.y + this.h - 5, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        class Ramp {
+            constructor(x, y, w, h) {
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = h;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.fillStyle = '#0284c7';
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y + this.h);
+                ctx.lineTo(this.x + this.w, this.y);
+                ctx.lineTo(this.x + this.w, this.y + this.h);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y + this.h);
+                ctx.lineTo(this.x + this.w, this.y);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class TrackSpike {
+            constructor(x, y, w = 44) {
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = 18;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                const count = Math.floor(this.w / 11);
+                const step = this.w / count;
+                for (let i = 0; i < count; i++) {
+                    const sx = this.x + i * step;
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.moveTo(sx, this.y);
+                    ctx.lineTo(sx + step / 2, this.y - this.h);
+                    ctx.lineTo(sx + step, this.y);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#fecaca';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+
+        class Coin {
+            constructor(id, x, y) {
+                this.id = id;
+                this.x = x;
+                this.y = y;
+                this.r = 9;
+                this.bobOffset = id * 0.6;
+            }
+
+            draw(ctx) {
+                const bob = Math.sin(Date.now() / 220 + this.bobOffset) * 3;
+                ctx.save();
+                ctx.fillStyle = activeTheme.coinMain;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y + bob, this.r, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = activeTheme.coinEdge;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#fef9c3';
+                ctx.fillRect(this.x - 1.5, this.y + bob - 4, 3, 8);
+                ctx.restore();
+            }
+        }
+
+        // Hovering Robot Drone Model
+        class Enemy {
+            constructor(id, x, y, minX, maxX, speed = 1.5) {
+                this.id = id;
+                this.x = x;
+                this.y = y;
+                this.w = 34;
+                this.h = 26;
+                this.minX = minX;
+                this.maxX = maxX;
+                this.vx = speed;
+                this.hoverOffset = id * 0.8;
+            }
+
+            update() {
+                this.x += this.vx;
+                if (this.x <= this.minX) {
+                    this.x = this.minX;
+                    this.vx = Math.abs(this.vx);
+                } else if (this.x + this.w >= this.maxX) {
+                    this.x = this.maxX - this.w;
+                    this.vx = -Math.abs(this.vx);
+                }
+            }
+
+            draw(ctx) {
+                const hover = Math.sin(Date.now() / 160 + this.hoverOffset) * 2.5;
+                const cx = this.x + this.w / 2;
+                const cy = this.y + this.h / 2 + hover;
+                const dir = this.vx >= 0 ? 1 : -1;
+
+                ctx.save();
+                ctx.translate(cx, cy);
+
+                // Top Rotor Mast & Spinning Blades
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillRect(-2, -17, 4, 6);
+                const bladeW = 14 + Math.sin(Date.now() / 35) * 8;
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(-bladeW, -18, bladeW * 2, 2.5);
+
+                // Metallic Drone Chassis
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.roundRect(-16, -11, 32, 21, 9);
+                ctx.fill();
+
+                ctx.strokeStyle = '#64748b';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Glowing Red Scanner Visor
+                ctx.fillStyle = '#ef4444';
+                ctx.shadowColor = '#ef4444';
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.roundRect(dir === 1 ? -2 : -11, -5, 13, 6, 3);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Visor Glint
+                ctx.fillStyle = '#fecaca';
+                ctx.fillRect(dir === 1 ? 4 : -8, -4, 4, 2);
+
+                // Blue Hover Thrusters
+                ctx.fillStyle = '#38bdf8';
+                ctx.beginPath();
+                ctx.arc(-8, 11, 3, 0, Math.PI * 2);
+                ctx.arc(8, 11, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class PowerupItem {
+            constructor(id, x, y, type) {
+                this.id = id;
+                this.x = x;
+                this.y = y;
+                this.r = 14;
+                this.type = type; // 'invincible', 'bronze', 'silver', 'gold'
+            }
+
+            draw(ctx) {
+                const bob = Math.sin(Date.now() / 190) * 3.5;
+                const configs = {
+                    invincible: { bg: '#9333ea', border: '#e9d5ff', icon: '⚡', label: '' },
+                    bronze: { bg: '#b45309', border: '#fcd34d', icon: '🔥', label: '5' },
+                    silver: { bg: '#475569', border: '#e2e8f0', icon: '🔥', label: '10' },
+                    gold: { bg: '#d97706', border: '#fef08a', icon: '🔥', label: '15' }
+                };
+                const cfg = configs[this.type];
+
+                ctx.save();
+                ctx.shadowColor = cfg.border;
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = cfg.bg;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y + bob, this.r, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = cfg.border;
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                ctx.shadowBlur = 0;
+                ctx.font = '13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(cfg.icon, this.x, this.y + bob);
+
+                if (cfg.label) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 9px Fredoka, sans-serif';
+                    ctx.fillText(cfg.label, this.x, this.y + bob + 19);
+                }
+                ctx.restore();
+            }
+        }
+
+        class PlayerFireball {
+            constructor(x, y, vx, colors) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.r = 8;
+                this.colors = colors;
+                this.life = 12; // ~114px (~3cm across screen at 9.5px/frame)
+            }
+
+            update() {
+                this.x += this.vx;
+                this.life--;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.shadowColor = this.colors.outer;
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = this.colors.outer;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = this.colors.core;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r * 0.55, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class CheckpointFlag {
+            constructor(index, x, y) {
+                this.index = index;
+                this.x = x;
+                this.y = y;
+                this.w = 12;
+                this.h = 54;
+            }
+
+            draw(ctx) {
+                const isActivated = activeCheckpointIndex >= this.index;
+                ctx.save();
+                ctx.fillStyle = '#cbd5e1';
+                ctx.fillRect(this.x - 2, this.y - this.h, 4, this.h);
+
+                ctx.fillStyle = isActivated ? '#22c55e' : '#ef4444';
+                ctx.beginPath();
+                ctx.moveTo(this.x + 2, this.y - this.h + 2);
+                ctx.lineTo(this.x + 28, this.y - this.h + 12);
+                ctx.lineTo(this.x + 2, this.y - this.h + 22);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#475569';
+                ctx.fillRect(this.x - 6, this.y - 6, 16, 6);
+                ctx.restore();
+            }
+        }
+
+        class GlassBallVehicle {
+            constructor(x, groundY) {
+                this.x = x;
+                this.y = groundY - 30;
+                this.r = 28;
+                this.collected = false;
+            }
+
+            draw(ctx) {
+                if (this.collected) return;
+                const bob = Math.sin(Date.now() / 220) * 3;
+                ctx.save();
+                ctx.translate(this.x, this.y + bob);
+
+                const ballGrad = ctx.createRadialGradient(-8, -8, 4, 0, 0, this.r);
+                ballGrad.addColorStop(0, 'rgba(255, 255, 255, 0.65)');
+                ballGrad.addColorStop(0.65, 'rgba(56, 189, 248, 0.3)');
+                ballGrad.addColorStop(1, 'rgba(14, 165, 233, 0.75)');
+                ctx.fillStyle = ballGrad;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.r, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#bae6fd';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                ctx.font = '18px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🔮', 0, 1);
+
+                ctx.fillStyle = '#bae6fd';
+                ctx.font = 'bold 10px Fredoka, sans-serif';
+                ctx.fillText('ENTER', 0, -this.r - 8);
+                ctx.restore();
+            }
+        }
+
+        class Boss {
+            constructor(x, groundY, arenaMinX, arenaMaxX, levelNum) {
+                this.w = 66;
+                this.h = 68;
+                this.x = x;
+                this.y = groundY - this.h;
+                this.arenaMinX = arenaMinX;
+                this.arenaMaxX = arenaMaxX;
+                const worldTier = Math.floor(levelNum / 10);
+                this.maxHp = 4 + worldTier * 2;
+                this.hp = this.maxHp;
+                this.vx = -(2.1 + worldTier * 0.22);
+                this.fireTimer = 95;
+                this.fireCooldown = Math.max(48, 105 - worldTier * 5);
+                this.fireballs = [];
+                this.hurtTimer = 0;
+                this.defeated = false;
+            }
+
+            update() {
+                if (this.defeated) return;
+                if (this.hurtTimer > 0) this.hurtTimer--;
+
+                this.x += this.vx;
+                if (this.x <= this.arenaMinX) {
+                    this.x = this.arenaMinX;
+                    this.vx = Math.abs(this.vx);
+                } else if (this.x + this.w >= this.arenaMaxX) {
+                    this.x = this.arenaMaxX - this.w;
+                    this.vx = -Math.abs(this.vx);
+                }
+
+                this.fireTimer--;
+                if (this.fireTimer <= 0) {
+                    this.fireTimer = this.fireCooldown;
+                    const dir = (player.x + player.w / 2) < (this.x + this.w / 2) ? -1 : 1;
+                    const speed = 4.6 + Math.min(2.8, (this.maxHp - 4) * 0.14);
+                    this.fireballs.push({
+                        x: dir === -1 ? this.x - 8 : this.x + this.w + 8,
+                        y: this.y + this.h * 0.55,
+                        vx: dir * speed,
+                        vy: 0,
+                        r: 9
+                    });
+                }
+
+                for (let i = this.fireballs.length - 1; i >= 0; i--) {
+                    const fb = this.fireballs[i];
+                    fb.x += fb.vx;
+                    fb.y += fb.vy;
+                    if (fb.x < this.arenaMinX - 140 || fb.x > this.arenaMaxX + 140) {
+                        this.fireballs.splice(i, 1);
+                    }
+                }
+            }
+
+            takeDamage(amount = 1) {
+                if (this.hurtTimer > 0 || this.defeated) return;
+                this.hp = Math.max(0, this.hp - amount);
+                this.hurtTimer = 18;
+                SoundFX.playStomp();
+                screenShake = 8;
+
+                if (this.hp <= 0) {
+                    this.defeated = true;
+                    this.fireballs = [];
+                    if (finishDoor) finishDoor.locked = false;
+                    const bonus = 5;
+                    coins += bonus;
+                    saveProgress();
+                    SoundFX.playWin();
+                    showToast(`👑 Boss Defeated! +${bonus} 🪙 & Door Unlocked!`, 3000);
+                }
+            }
+
+            draw(ctx) {
+                this.fireballs.forEach(fb => {
+                    ctx.save();
+                    ctx.fillStyle = '#f97316';
+                    ctx.shadowColor = '#ef4444';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(fb.x, fb.y, fb.r, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#fef08a';
+                    ctx.beginPath();
+                    ctx.arc(fb.x, fb.y, fb.r * 0.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                if (this.defeated) return;
+
+                ctx.save();
+                if (this.hurtTimer > 0 && this.hurtTimer % 4 < 2) {
+                    ctx.globalAlpha = 0.5;
+                }
+
+                ctx.fillStyle = '#7f1d1d';
+                ctx.beginPath();
+                ctx.roundRect(this.x, this.y, this.w, this.h, 14);
+                ctx.fill();
+
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                ctx.fillStyle = '#facc15';
+                ctx.beginPath();
+                ctx.moveTo(this.x + 12, this.y);
+                ctx.lineTo(this.x + 18, this.y - 12);
+                ctx.lineTo(this.x + 25, this.y);
+                ctx.moveTo(this.x + this.w - 12, this.y);
+                ctx.lineTo(this.x + this.w - 18, this.y - 12);
+                ctx.lineTo(this.x + this.w - 25, this.y);
+                ctx.fill();
+
+                ctx.fillStyle = '#fef08a';
+                ctx.fillRect(this.x + 12, this.y + 18, 12, 8);
+                ctx.fillRect(this.x + this.w - 24, this.y + 18, 12, 8);
+
+                const barW = Math.max(74, this.w + 16);
+                const barX = this.x + this.w / 2 - barW / 2;
+                const barY = this.y - 26;
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.beginPath();
+                ctx.roundRect(barX, barY, barW, 10, 5);
+                ctx.fill();
+
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.roundRect(barX + 2, barY + 2, (barW - 4) * (this.hp / this.maxHp), 6, 3);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class SecretDoor {
+            constructor(x, y, locked = false) {
+                this.x = x;
+                this.y = y - 68;
+                this.w = 46;
+                this.h = 68;
+                this.locked = locked;
+                this.closeProgress = 0;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.fillStyle = '#334155';
+                ctx.beginPath();
+                ctx.roundRect(this.x - 5, this.y - 5, this.w + 10, this.h + 5, [14, 14, 0, 0]);
+                ctx.fill();
+
+                const innerX = this.x;
+                const innerY = this.y;
+                const innerW = this.w;
+                const innerH = this.h;
+
+                const grad = ctx.createLinearGradient(innerX, innerY, innerX, innerY + innerH);
+                if (this.locked) {
+                    grad.addColorStop(0, '#475569');
+                    grad.addColorStop(1, '#1e293b');
+                } else {
+                    grad.addColorStop(0, '#38bdf8');
+                    grad.addColorStop(0.5, '#818cf8');
+                    grad.addColorStop(1, '#c084fc');
+                }
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.roundRect(innerX, innerY, innerW, innerH, [10, 10, 0, 0]);
+                ctx.fill();
+
+                if (this.closeProgress > 0) {
+                    const panelW = (innerW / 2) * this.closeProgress;
+                    ctx.fillStyle = '#1e293b';
+                    ctx.strokeStyle = '#94a3b8';
+                    ctx.lineWidth = 2;
+
+                    ctx.fillRect(innerX, innerY, panelW, innerH);
+                    ctx.strokeRect(innerX, innerY, panelW, innerH);
+
+                    ctx.fillRect(innerX + innerW - panelW, innerY, panelW, innerH);
+                    ctx.strokeRect(innerX + innerW - panelW, innerY, panelW, innerH);
+
+                    if (this.closeProgress >= 0.98) {
+                        ctx.strokeStyle = '#facc15';
+                        ctx.lineWidth = 2.5;
+                        ctx.beginPath();
+                        ctx.moveTo(innerX + innerW / 2, innerY + 2);
+                        ctx.lineTo(innerX + innerW / 2, innerY + innerH - 2);
+                        ctx.stroke();
+                    }
+                } else {
+                    ctx.fillStyle = '#fef08a';
+                    ctx.beginPath();
+                    ctx.arc(this.x + this.w - 10, this.y + this.h / 2, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                if (this.locked) {
+                    ctx.fillStyle = '#ef4444';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🔒', this.x + this.w / 2, this.y + this.h / 2 + 6);
+                }
+                ctx.restore();
+            }
+        }
+
+        // --- Deterministic Level Generator (100 Levels, 10 Worlds, Boss Every 10th) ---
+        function loadLevel(lvl, useCheckpoint = false) {
+            currentLevel = Math.max(1, Math.min(TOTAL_LEVELS, lvl));
+            activeTheme = getThemeForLevel(currentLevel);
+
+            if (!useCheckpoint) {
+                activeCheckpointIndex = -1;
+                collectedCoinIds.clear();
+                killedEnemyIds.clear();
+                collectedPowerupIds.clear();
+                savedCannonState = { shots: 0, tier: null };
+            }
+
+            platforms = [];
+            ramps = [];
+            spikes = [];
+            coinsList = [];
+            enemies = [];
+            powerups = [];
+            playerFireballs = [];
+            checkpointFlags = [];
+            glassBallPickup = null;
+            boss = null;
+            finishDoor = null;
+            finishTimer = 0;
+
+            const groundY = Math.max(280, canvas.height - 70);
+            const isBossLevel = (currentLevel % 10 === 0);
+            const levelInWorld = ((currentLevel - 1) % 10) + 1;
+            const hasDrivingTrack = !isBossLevel && (levelInWorld === 3 || levelInWorld === 6 || levelInWorld === 9);
+            const rand = seededRandom(currentLevel * 977 + 131);
+
+            let coinIdx = 0;
+            let enemyIdx = 0;
+            let powerupIdx = 0;
+
+            if (isBossLevel) {
+                // Boss Arena Stage (Every 10th Level: 10, 20, 30, ..., 100)
+                const arenaW = 1120;
+                platforms.push(new Platform(0, groundY, arenaW, 28));
+                platforms.push(new Platform(160, groundY - 90, 140, 22));
+                platforms.push(new Platform(470, groundY - 125, 180, 22));
+                platforms.push(new Platform(800, groundY - 90, 140, 22));
+
+                for (let c = 0; c < 6; c++) {
+                    const cId = coinIdx++;
+                    if (!collectedCoinIds.has(cId)) {
+                        coinsList.push(new Coin(cId, 200 + c * 130, groundY - 155));
+                    }
+                }
+
+                // Randomized cannon buffs inside boss arena
+                if (!collectedPowerupIds.has(0) && Math.random() < 0.50) {
+                    powerups.push(new PowerupItem(0, 230, groundY - 120, 'bronze'));
+                }
+                if (!collectedPowerupIds.has(1) && Math.random() < 0.30) {
+                    powerups.push(new PowerupItem(1, 560, groundY - 155, 'silver'));
+                }
+                if (!collectedPowerupIds.has(2) && Math.random() < 0.10) {
+                    powerups.push(new PowerupItem(2, 870, groundY - 120, 'gold'));
+                }
+
+                boss = new Boss(740, groundY, 340, arenaW - 130, currentLevel);
+                finishDoor = new SecretDoor(arenaW - 95, groundY, true);
+                player.x = 80;
+                player.y = groundY - player.h - 2;
+            } else {
+                // Doubled Level Length with Elevated Upper Platforms & 2 Checkpoints
+                const segmentCount = (10 + Math.min(8, Math.floor(currentLevel / 8))) * 2;
+                const cp1Index = Math.floor(segmentCount / 3);
+                const cp2Index = Math.floor((segmentCount * 2) / 3);
+                let currentX = 0;
+
+                platforms.push(new Platform(0, groundY, 260, 28));
+                currentX = 260;
+
+                for (let i = 0; i < segmentCount; i++) {
+                    const gap = 55 + Math.floor(rand() * 48);
+                    currentX += gap;
+
+                    const platW = 140 + Math.floor(rand() * 125);
+                    const heightOffset = Math.floor((rand() - 0.45) * 110);
+                    const platY = Math.max(165, Math.min(groundY, groundY - heightOffset));
+
+                    let moveType = null;
+                    let moveRange = 0;
+                    let moveSpeed = 0;
+                    const isCheckpointSeg = (i === cp1Index || i === cp2Index);
+
+                    if (!isCheckpointSeg && i > 1 && rand() < 0.26) {
+                        moveType = rand() < 0.55 ? 'H' : 'V';
+                        moveRange = moveType === 'H' ? 40 + rand() * 35 : 32 + rand() * 28;
+                        moveSpeed = 0.025 + rand() * 0.015;
+                    }
+
+                    platforms.push(new Platform(currentX, platY, platW, 26, moveType, moveRange, moveSpeed));
+
+                    // Two Checkpoints per Level (1/3 and 2/3 of the stage)
+                    if (i === cp1Index) {
+                        checkpointFlags.push(new CheckpointFlag(0, currentX + platW / 2, platY));
+                        if (activeCheckpointIndex === 0) {
+                            checkpointPos = { x: currentX + platW / 2 - player.w / 2, y: platY - player.h - 2 };
+                        }
+                    } else if (i === cp2Index) {
+                        checkpointFlags.push(new CheckpointFlag(1, currentX + platW / 2, platY));
+                        if (activeCheckpointIndex === 1) {
+                            checkpointPos = { x: currentX + platW / 2 - player.w / 2, y: platY - player.h - 2 };
+                        }
+                    }
+
+                    // Smaller Elevated Platforms above main platforms
+                    let hasUpperPlat = false;
+                    if (!moveType && !isCheckpointSeg && platW >= 155 && platY >= 210 && rand() < 0.52) {
+                        hasUpperPlat = true;
+                        const upperW = Math.floor(platW * (0.45 + rand() * 0.15));
+                        const upperX = currentX + Math.floor((platW - upperW) / 2);
+                        const upperY = Math.max(95, platY - (78 + Math.floor(rand() * 22)));
+                        platforms.push(new Platform(upperX, upperY, upperW, 18));
+
+                        for (let uc = 0; uc < 2; uc++) {
+                            const cId = coinIdx++;
+                            if (!collectedCoinIds.has(cId)) {
+                                const ucx = upperX + 18 + (uc * (upperW - 36));
+                                coinsList.push(new Coin(cId, ucx, upperY - 22));
+                            }
+                        }
+                    }
+
+                    // Coins on main platform
+                    const coinCount = 2 + Math.floor(rand() * 3);
+                    for (let c = 0; c < coinCount; c++) {
+                        const cId = coinIdx++;
+                        if (!collectedCoinIds.has(cId)) {
+                            const cx = currentX + 24 + (c * (platW - 48)) / Math.max(1, coinCount - 1);
+                            coinsList.push(new Coin(cId, cx, platY - 26));
+                        }
+                    }
+
+                    // Enemies on non-moving platforms
+                    if (!moveType && i > 0 && !isCheckpointSeg && rand() < 0.78) {
+                        const eId = enemyIdx++;
+                        if (!killedEnemyIds.has(eId)) {
+                            const spd = (1.3 + Math.min(2.2, currentLevel * 0.02)) * (rand() < 0.5 ? 1 : -1);
+                            enemies.push(new Enemy(eId, currentX + 20, platY - 30, currentX + 6, currentX + platW - 6, spd));
+                        }
+                        if (!hasUpperPlat && platW >= 210 && rand() < 0.45) {
+                            const eId2 = enemyIdx++;
+                            if (!killedEnemyIds.has(eId2)) {
+                                const spd2 = -(1.4 + Math.min(2.2, currentLevel * 0.02));
+                                enemies.push(new Enemy(eId2, currentX + platW - 54, platY - 30, currentX + 6, currentX + platW - 6, spd2));
+                            }
+                        }
+                    }
+
+                    currentX += platW;
+                }
+
+                // Per-Level Randomized Weapon & Invincibility Buffs (Gold 10%, Silver 30%, Bronze 50%, Invincible 50%)
+                const eligiblePlats = platforms.slice(1, -1).filter(p => !p.moveType);
+                if (eligiblePlats.length > 0) {
+                    const spawnBuff = (id, prob, type) => {
+                        if (!collectedPowerupIds.has(id) && Math.random() < prob) {
+                            const p = eligiblePlats[Math.floor(Math.random() * eligiblePlats.length)];
+                            powerups.push(new PowerupItem(id, p.x + p.w * (0.25 + Math.random() * 0.5), p.y - 30, type));
+                        }
+                    };
+                    spawnBuff(powerupIdx++, 0.10, 'gold');
+                    spawnBuff(powerupIdx++, 0.30, 'silver');
+                    spawnBuff(powerupIdx++, 0.50, 'bronze');
+                    spawnBuff(powerupIdx++, 0.50, 'invincible');
+                }
+
+                // Glass Ball Vehicle Entry & High-Speed Hazardous Driving Track (3 per world)
+                if (hasDrivingTrack) {
+                    currentX += 65;
+                    const entryPlat = new Platform(currentX, groundY, 170, 28);
+                    entryPlat.isDrivingTrack = true;
+                    platforms.push(entryPlat);
+
+                    // Checkpoint right before the Glass Ball driving section
+                    const cpDriveIndex = checkpointFlags.length;
+                    checkpointFlags.push(new CheckpointFlag(cpDriveIndex, currentX + 32, groundY));
+                    if (activeCheckpointIndex === cpDriveIndex) {
+                        checkpointPos = { x: currentX + 32 - player.w / 2, y: groundY - player.h - 2 };
+                    }
+
+                    // Physical Glass Ball vehicle waiting to be entered
+                    glassBallPickup = new GlassBallVehicle(currentX + 95, groundY);
+                    currentX += 170;
+
+                    // Segmented track with pitfall gaps & spike hazards so players can die if they miss jumps
+                    const trackSegments = [
+                        { w: 460, hasRamp: true, rampX: 250, spikeX: null },
+                        { w: 480, hasRamp: true, rampX: 270, spikeX: 120 },
+                        { w: 450, hasRamp: true, rampX: 240, spikeX: 110 }
+                    ];
+
+                    trackSegments.forEach(seg => {
+                        currentX += 85; // Pitfall gap requiring ramp/jump clearance
+                        const segPlat = new Platform(currentX, groundY, seg.w, 28);
+                        segPlat.isDrivingTrack = true;
+                        platforms.push(segPlat);
+
+                        if (seg.spikeX !== null) {
+                            spikes.push(new TrackSpike(currentX + seg.spikeX, groundY, 44));
+                        }
+
+                        if (seg.hasRamp) {
+                            const rx = currentX + seg.rampX;
+                            ramps.push(new Ramp(rx, groundY - 46, 110, 46));
+                            for (let a = 0; a < 4; a++) {
+                                const cId = coinIdx++;
+                                if (!collectedCoinIds.has(cId)) {
+                                    coinsList.push(new Coin(cId, rx + 95 + a * 36, groundY - 75 - Math.sin((a / 3) * Math.PI) * 55));
+                                }
+                            }
+                        }
+
+                        currentX += seg.w;
+                    });
+                }
+
+                // Final Secret Door Platform
+                currentX += 65;
+                platforms.push(new Platform(currentX, groundY, 240, 28));
+                finishDoor = new SecretDoor(currentX + 140, groundY, false);
+
+                if (useCheckpoint && activeCheckpointIndex >= 0) {
+                    const cpFlag = checkpointFlags[activeCheckpointIndex];
+                    if (cpFlag) {
+                        player.x = cpFlag.x - player.w / 2;
+                        player.y = cpFlag.y - player.h - 2;
+                    } else {
+                        player.x = checkpointPos.x;
+                        player.y = checkpointPos.y;
+                    }
+                } else {
+                    player.x = 80;
+                    player.y = groundY - player.h - 2;
+                }
+            }
+
+            player.reset(player.x, player.y, useCheckpoint);
+            cameraX = Math.max(0, player.x - canvas.width * 0.28);
+            updateHUD();
+        }
+
+        // --- Player Death & Checkpoint Respawn Handler ---
+        function handlePlayerDeath() {
+            SoundFX.playHit();
+            screenShake = 12;
+
+            if (activeCheckpointIndex >= 0) {
+                savedCannonState = { shots: player.fireballShots, tier: player.cannonTier };
+                showToast(`🚩 Respawned at Checkpoint ${activeCheckpointIndex + 1}!`, 1800);
+                loadLevel(currentLevel, true);
+            } else {
+                gameState = 'GAMEOVER';
+                document.getElementById('endIcon').textContent = '💥';
+                document.getElementById('endTitle').textContent = 'Ouch! Try Again';
+                document.getElementById('endSubtitle').textContent = `Fell on Stage ${currentLevel} (${activeTheme.name})`;
+                document.getElementById('nextLevelBtn').classList.add('hidden');
+                document.getElementById('endOverlay').classList.remove('hidden');
+            }
+        }
+
+        // --- Core Game Physics & Collision Loop ---
+        function updateGame() {
+            if (screenShake > 0) screenShake--;
+
+            // Dramatic Secret Door Shut Animation Sequence
+            if (gameState === 'FINISHING') {
+                finishTimer++;
+                if (finishDoor) {
+                    const targetX = finishDoor.x + finishDoor.w / 2 - player.w / 2;
+                    const targetY = finishDoor.y + finishDoor.h - player.h;
+                    player.x += (targetX - player.x) * 0.16;
+                    player.y += (targetY - player.y) * 0.16;
+                    player.vx = 0;
+                    player.vy = 0;
+
+                    if (finishTimer > 12) {
+                        finishDoor.closeProgress = Math.min(1, finishDoor.closeProgress + 0.085);
+                    }
+                    if (finishTimer === 24) {
+                        SoundFX.playDoorSlam();
+                        screenShake = 15;
+                    }
+                }
+
+                if (finishTimer >= 46) {
+                    gameState = 'WON';
+                    SoundFX.playWin();
+
+                    if (currentLevel === maxUnlockedLevel && maxUnlockedLevel < TOTAL_LEVELS) {
+                        maxUnlockedLevel++;
+                    }
+                    saveProgress();
+
+                    document.getElementById('endIcon').textContent = '🏆';
+                    document.getElementById('endTitle').textContent = currentLevel === TOTAL_LEVELS ? 'Champion of 100 Levels!' : `Level ${currentLevel} Cleared!`;
+                    document.getElementById('endSubtitle').textContent = `Secret Door Unlocked • ${activeTheme.name}`;
+                    const nextBtn = document.getElementById('nextLevelBtn');
+                    if (currentLevel < TOTAL_LEVELS) {
+                        nextBtn.classList.remove('hidden');
+                        nextBtn.textContent = `Play Level ${currentLevel + 1} ➔`;
+                    } else {
+                        nextBtn.classList.add('hidden');
+                    }
+                    document.getElementById('endOverlay').classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (gameState !== 'PLAYING') return;
+
+            if (player.invincibleTimer > 0) player.invincibleTimer--;
+            if (player.fireCooldown > 0) player.fireCooldown--;
+
+            // Update Moving Platforms
+            platforms.forEach(p => p.update());
+
+            // Enter Glass Ball Vehicle Pickup
+            if (glassBallPickup && !glassBallPickup.collected) {
+                if (Math.hypot((player.x + player.w / 2) - glassBallPickup.x, (player.y + player.h / 2) - glassBallPickup.y) < glassBallPickup.r + 22) {
+                    glassBallPickup.collected = true;
+                    player.inGlassBall = true;
+                    showToast('🔮 Entered Glass Ball! Forward only—watch for spikes & gaps!', 2400);
+                    SoundFX.playPowerup();
+                }
+            }
+
+            // Exit Glass Ball once back on normal platforms after the driving track
+            if (player.inGlassBall && player.onGround) {
+                let onNormalPlat = false;
+                platforms.forEach(p => {
+                    if (!p.isDrivingTrack &&
+                        player.x + player.w > p.x &&
+                        player.x < p.x + p.w &&
+                        Math.abs((player.y + player.h) - p.y) <= 10) {
+                        onNormalPlat = true;
+                    }
+                });
+                if (onNormalPlat) {
+                    player.inGlassBall = false;
+                }
+            }
+
+            // Horizontal Movement (Faster inside Glass Ball, forward-only when driving)
+            const speed = player.inGlassBall ? player.baseSpeed * 1.65 : player.baseSpeed;
+            if (player.inGlassBall) {
+                if (keys.right) {
+                    player.vx = speed;
+                    player.facing = 1;
+                } else {
+                    player.vx *= 0.85;
+                    if (Math.abs(player.vx) < 0.15) player.vx = 0;
+                }
+            } else if (keys.left) {
+                player.vx = -speed;
+                player.facing = -1;
+            } else if (keys.right) {
+                player.vx = speed;
+                player.facing = 1;
+            } else {
+                player.vx *= 0.78;
+                if (Math.abs(player.vx) < 0.15) player.vx = 0;
+            }
+
+            if (Math.abs(player.vx) > 0.3 && player.onGround) {
+                player.runCycle += 0.28;
+            }
+            if (player.inGlassBall) {
+                player.ballRotation += player.vx * 0.045;
+            }
+
+            // Jump
+            if (jumpPressed && player.onGround) {
+                player.vy = player.inGlassBall ? player.jumpForce * 1.12 : player.jumpForce;
+                player.onGround = false;
+                player.ridingPlatform = null;
+                SoundFX.playJump();
+            }
+            jumpPressed = false;
+
+            // Gravity & Position Integration
+            player.vy += player.gravity;
+            player.x += player.vx;
+            if (player.x < 0) player.x = 0;
+
+            const prevBottom = player.y + player.h;
+            player.y += player.vy;
+            player.onGround = false;
+            player.ridingPlatform = null;
+
+            // Ramp Collision & Launch Boost
+            ramps.forEach(r => {
+                const footX = player.x + player.w / 2;
+                if (footX >= r.x && footX <= r.x + r.w) {
+                    const progress = (footX - r.x) / r.w;
+                    const rampSurfaceY = (r.y + r.h) - progress * r.h;
+                    if (player.y + player.h >= rampSurfaceY - 4 && prevBottom <= r.y + r.h + 12) {
+                        player.y = rampSurfaceY - player.h;
+                        player.onGround = true;
+                        if (player.vx > 2.5) {
+                            player.vy = -5.6;
+                        } else {
+                            player.vy = 0;
+                        }
+                    }
+                }
+            });
+
+            // Platform Landing Collision
+            platforms.forEach(p => {
+                if (player.vy >= 0 &&
+                    player.x + player.w - 4 > p.x &&
+                    player.x + 4 < p.x + p.w &&
+                    prevBottom <= p.y + 12 &&
+                    player.y + player.h >= p.y) {
+                    player.y = p.y - player.h;
+                    player.vy = 0;
+                    player.onGround = true;
+                    player.ridingPlatform = p;
+                }
+            });
+
+            // Pitfall Check
+            if (player.y > canvas.height + 80) {
+                handlePlayerDeath();
+                return;
+            }
+
+            // Track Spike Hazard Collision (Deadly unless invincible)
+            for (let i = 0; i < spikes.length; i++) {
+                const sp = spikes[i];
+                if (player.x + player.w - 6 > sp.x && player.x + 6 < sp.x + sp.w &&
+                    player.y + player.h > sp.y - sp.h + 4 && player.y < sp.y) {
+                    if (player.invincibleTimer <= 0) {
+                        handlePlayerDeath();
+                        return;
+                    }
+                }
+            }
+
+            // Player Fireball Projectiles Update & Hits
+            for (let i = playerFireballs.length - 1; i >= 0; i--) {
+                const fb = playerFireballs[i];
+                fb.update();
+                let hit = false;
+
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const en = enemies[j];
+                    if (fb.x + fb.r > en.x && fb.x - fb.r < en.x + en.w &&
+                        fb.y + fb.r > en.y && fb.y - fb.r < en.y + en.h) {
+                        killedEnemyIds.add(en.id);
+                        enemies.splice(j, 1);
+                        coins += 5;
+                        saveProgress();
+                        SoundFX.playStomp();
+                        hit = true;
+                        break;
+                    }
+                }
+
+                if (!hit && boss && !boss.defeated) {
+                    if (fb.x + fb.r > boss.x && fb.x - fb.r < boss.x + boss.w &&
+                        fb.y + fb.r > boss.y && fb.y - fb.r < boss.y + boss.h) {
+                        boss.takeDamage(1);
+                        hit = true;
+                    }
+                }
+
+                if (hit || fb.life <= 0) {
+                    playerFireballs.splice(i, 1);
+                }
+            }
+
+            // Coin Collection
+            for (let i = coinsList.length - 1; i >= 0; i--) {
+                const c = coinsList[i];
+                if (Math.hypot((player.x + player.w / 2) - c.x, (player.y + player.h / 2) - c.y) < c.r + 22) {
+                    collectedCoinIds.add(c.id);
+                    coinsList.splice(i, 1);
+                    coins += 1;
+                    saveProgress();
+                    SoundFX.playCoin();
+                }
+            }
+
+            // Powerups & Fireball Cannon Pickups (Collectible once per level)
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const pw = powerups[i];
+                if (Math.hypot((player.x + player.w / 2) - pw.x, (player.y + player.h / 2) - pw.y) < pw.r + 22) {
+                    collectedPowerupIds.add(pw.id);
+                    powerups.splice(i, 1);
+                    SoundFX.playPowerup();
+
+                    if (pw.type === 'invincible') {
+                        player.invincibleTimer = 360;
+                        showToast('⚡ Invincible Mode! Smash through enemies!', 2500);
+                    } else if (pw.type === 'bronze') {
+                        if (!player.cannonTier) player.cannonTier = 'bronze';
+                        player.fireballShots += 5;
+                        savedCannonState = { shots: player.fireballShots, tier: player.cannonTier };
+                        updateHUD();
+                        showToast(`🥉 +5 Fireballs! (Total: ${player.fireballShots}) Press F / 🔥`, 2500);
+                    } else if (pw.type === 'silver') {
+                        if (player.cannonTier !== 'gold') player.cannonTier = 'silver';
+                        player.fireballShots += 10;
+                        savedCannonState = { shots: player.fireballShots, tier: player.cannonTier };
+                        updateHUD();
+                        showToast(`🥈 +10 Fireballs! (Total: ${player.fireballShots}) Press F / 🔥`, 2500);
+                    } else if (pw.type === 'gold') {
+                        player.cannonTier = 'gold';
+                        player.fireballShots += 15;
+                        savedCannonState = { shots: player.fireballShots, tier: player.cannonTier };
+                        updateHUD();
+                        showToast(`🥇 +15 Fireballs! (Total: ${player.fireballShots}) Press F / 🔥`, 2500);
+                    }
+                }
+            }
+
+            // Checkpoint Activation (Supports 2 Checkpoints per Level)
+            checkpointFlags.forEach(cp => {
+                if (activeCheckpointIndex < cp.index &&
+                    Math.abs((player.x + player.w / 2) - cp.x) < 28 &&
+                    Math.abs((player.y + player.h) - cp.y) < 55) {
+                    activeCheckpointIndex = cp.index;
+                    checkpointPos = { x: cp.x - player.w / 2, y: cp.y - player.h - 2 };
+                    savedCannonState = { shots: player.fireballShots, tier: player.cannonTier };
+                    SoundFX.playCheckpoint();
+                    showToast(`🚩 Checkpoint ${cp.index + 1} Saved!`, 2000);
+                }
+            });
+
+            // Enemy Patrol & Collision
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const en = enemies[i];
+                en.update();
+
+                if (player.x + player.w - 4 > en.x && player.x + 4 < en.x + en.w &&
+                    player.y + player.h > en.y && player.y < en.y + en.h) {
+                    const isStomp = player.vy > 0 && (prevBottom <= en.y + 15);
+                    if (isStomp || player.invincibleTimer > 0 || player.inGlassBall) {
+                        killedEnemyIds.add(en.id);
+                        enemies.splice(i, 1);
+                        if (isStomp) player.vy = -8.5;
+                        coins += 5;
+                        saveProgress();
+                        SoundFX.playStomp();
+                        screenShake = 5;
+                    } else {
+                        handlePlayerDeath();
+                        return;
+                    }
+                }
+            }
+
+            // Boss Encounter Update & Collision
+            if (boss && !boss.defeated) {
+                boss.update();
+
+                for (let i = boss.fireballs.length - 1; i >= 0; i--) {
+                    const fb = boss.fireballs[i];
+                    if (Math.hypot((player.x + player.w / 2) - fb.x, (player.y + player.h / 2) - fb.y) < fb.r + 14) {
+                        boss.fireballs.splice(i, 1);
+                        if (player.invincibleTimer <= 0) {
+                            handlePlayerDeath();
+                            return;
+                        }
+                    }
+                }
+
+                if (player.x + player.w > boss.x && player.x < boss.x + boss.w &&
+                    player.y + player.h > boss.y && player.y < boss.y + boss.h) {
+                    const isStomp = player.vy > 0 && (prevBottom <= boss.y + 20);
+                    if (isStomp) {
+                        player.vy = -10.5;
+                        boss.takeDamage(1);
+                    } else if (player.invincibleTimer > 0) {
+                        boss.takeDamage(1);
+                    } else {
+                        handlePlayerDeath();
+                        return;
+                    }
+                }
+            }
+
+            // Secret Door Goal Check
+            if (finishDoor &&
+                player.x + player.w > finishDoor.x + 6 &&
+                player.x < finishDoor.x + finishDoor.w - 6 &&
+                player.y + player.h > finishDoor.y &&
+                player.y < finishDoor.y + finishDoor.h) {
+                if (finishDoor.locked) {
+                    showToast('🔒 Defeat the Boss to unlock the Secret Door!', 1500);
+                } else {
+                    gameState = 'FINISHING';
+                    finishTimer = 0;
+                    finishDoor.closeProgress = 0.05;
+                }
+            }
+
+            // Smooth Camera Follow
+            const targetCamX = Math.max(0, player.x - canvas.width * 0.3);
+            cameraX += (targetCamX - cameraX) * 0.14;
+        }
+
+        // --- Render Frame ---
+        function drawGame() {
+            ctx.save();
+            if (screenShake > 0) {
+                ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+            }
+
+            // Sky Gradient
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGrad.addColorStop(0, activeTheme.skyTop);
+            skyGrad.addColorStop(1, activeTheme.skyBot);
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Sun / Moon Orb
+            ctx.fillStyle = activeTheme.sunColor;
+            ctx.beginPath();
+            ctx.arc(canvas.width - 85, 65, 28, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Night Sky Twinkling Stars
+            if (activeTheme.isNight) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+                for (let s = 0; s < 28; s++) {
+                    const sx = ((s * 137 - cameraX * 0.06) % canvas.width + canvas.width) % canvas.width;
+                    const sy = (s * 53) % (canvas.height * 0.52);
+                    ctx.fillRect(sx, sy, 2, 2);
+                }
+            } else {
+                // Fluffy Clouds
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+                for (let c = 0; c < 6; c++) {
+                    const cx = ((c * 240 - cameraX * 0.12) % (canvas.width + 200) + (canvas.width + 200)) % (canvas.width + 200) - 100;
+                    const cy = 50 + (c % 3) * 35;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 22, 0, Math.PI * 2);
+                    ctx.arc(cx + 20, cy - 6, 26, 0, Math.PI * 2);
+                    ctx.arc(cx + 42, cy, 20, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Parallax Rolling Hills
+            ctx.fillStyle = activeTheme.hillBack;
+            for (let h = -1; h < Math.ceil(canvas.width / 260) + 2; h++) {
+                const hx = h * 260 - ((cameraX * 0.2) % 260);
+                ctx.beginPath();
+                ctx.arc(hx + 130, canvas.height - 20, 145, Math.PI, 0);
+                ctx.fill();
+            }
+
+            ctx.fillStyle = activeTheme.hillFront;
+            for (let h = -1; h < Math.ceil(canvas.width / 200) + 2; h++) {
+                const hx = h * 200 - ((cameraX * 0.35) % 200);
+                ctx.beginPath();
+                ctx.arc(hx + 100, canvas.height, 110, Math.PI, 0);
+                ctx.fill();
+            }
+
+            // World Space Translation
+            ctx.save();
+            ctx.translate(-cameraX, 0);
+
+            // Floating Platforms, Ramps & Track Spikes
+            platforms.forEach(p => p.draw(ctx));
+            ramps.forEach(r => r.draw(ctx));
+            spikes.forEach(sp => sp.draw(ctx));
+
+            // Checkpoints, Glass Ball Vehicle & Secret Door
+            checkpointFlags.forEach(cp => cp.draw(ctx));
+            if (glassBallPickup) glassBallPickup.draw(ctx);
+            if (finishDoor) finishDoor.draw(ctx);
+
+            // Coins, Powerups, Enemies, Boss & Player
+            coinsList.forEach(c => c.draw(ctx));
+            powerups.forEach(pw => pw.draw(ctx));
+            enemies.forEach(en => en.draw(ctx));
+            if (boss) boss.draw(ctx);
+            playerFireballs.forEach(fb => fb.draw(ctx));
+
+            if (!(gameState === 'FINISHING' && finishTimer > 26)) {
+                player.draw(ctx);
+            }
+
+            ctx.restore();
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            updateGame();
+            drawGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- UI & Modal Management ---
+        function updateHUD() {
+            document.getElementById('hudLevel').textContent = currentLevel;
+            document.getElementById('hudCoins').textContent = coins;
+            document.getElementById('shopCoinsDisplay').textContent = coins;
+            document.getElementById('startLevelNum').textContent = currentLevel;
+
+            const isBoss = currentLevel % 10 === 0;
+            const lvlInWorld = ((currentLevel - 1) % 10) + 1;
+            const isDrive = !isBoss && (lvlInWorld === 3 || lvlInWorld === 6 || lvlInWorld === 9);
+            const tag = isBoss ? ' • 👑 BOSS' : (isDrive ? ' • 🔮 GLASS BALL' : '');
+            document.getElementById('worldSubtext').textContent = `Stage ${currentLevel}/100 • ${activeTheme.name}${tag}`;
+
+            const fbBox = document.getElementById('hudFireballBox');
+            const fbText = document.getElementById('hudFireballs');
+            if (player.fireballShots > 0) {
+                const tierLabel = player.cannonTier ? player.cannonTier.toUpperCase() : '';
+                fbText.textContent = `${tierLabel} ${player.fireballShots}`;
+                fbBox.className = 'px-2.5 py-1 bg-orange-500/20 text-orange-300 rounded-lg border border-orange-500/40 font-semibold text-xs flex items-center gap-1 transition-all';
+            } else {
+                fbText.textContent = '0';
+                fbBox.className = 'px-2.5 py-1 bg-slate-800/90 text-slate-400 rounded-lg border border-slate-700 font-semibold text-xs flex items-center gap-1 transition-all';
+            }
+        }
+
+        function renderLevelSelectGrid() {
+            const grid = document.getElementById('levelGrid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= TOTAL_LEVELS; i++) {
+                const isUnlocked = i <= maxUnlockedLevel;
+                const isBoss = i % 10 === 0;
+                const lvlInWorld = ((i - 1) % 10) + 1;
+                const isDrive = !isBoss && (lvlInWorld === 3 || lvlInWorld === 6 || lvlInWorld === 9);
+                const btn = document.createElement('button');
+
+                if (!isUnlocked) {
+                    btn.disabled = true;
+                    btn.className = 'p-2 rounded-xl border border-slate-800 bg-slate-900/60 text-slate-500 font-bold text-xs flex flex-col items-center justify-center opacity-60 cursor-not-allowed';
+                    btn.innerHTML = `<span class="text-[11px]">🔒</span><span>${i}</span>`;
+                } else {
+                    const activeClass = i === currentLevel
+                        ? 'bg-amber-400 text-slate-950 border-amber-300 ring-2 ring-amber-400/50'
+                        : isBoss
+                            ? 'bg-rose-950/80 hover:bg-rose-900 text-rose-200 border-rose-700/70'
+                            : 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700';
+
+                    btn.className = `btn-bounce p-2 rounded-xl border font-bold text-xs flex flex-col items-center justify-center transition cursor-pointer ${activeClass}`;
+                    const badge = isBoss ? '<span class="text-[9px] leading-none">👑</span>' : (isDrive ? '<span class="text-[9px] leading-none">🔮</span>' : '');
+                    btn.innerHTML = `${badge}<span>${i}</span>`;
+                    btn.onclick = () => {
+                        document.getElementById('levelSelectModal').classList.add('hidden');
+                        document.getElementById('startOverlay').classList.add('hidden');
+                        document.getElementById('endOverlay').classList.add('hidden');
+                        loadLevel(i, false);
+                        gameState = 'PLAYING';
+                    };
+                }
+                grid.appendChild(btn);
+            }
+        }
+
+        function renderShop() {
+            const tabRunners = document.getElementById('tabRunnerSkins');
+            const tabGuns = document.getElementById('tabGunSkins');
+
+            if (activeShopTab === 'runners') {
+                tabRunners.className = 'btn-bounce flex-1 py-1.5 rounded-xl font-bold text-xs bg-amber-400 text-slate-950 transition cursor-pointer';
+                tabGuns.className = 'btn-bounce flex-1 py-1.5 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 hover:bg-slate-700 transition cursor-pointer';
+            } else {
+                tabGuns.className = 'btn-bounce flex-1 py-1.5 rounded-xl font-bold text-xs bg-amber-400 text-slate-950 transition cursor-pointer';
+                tabRunners.className = 'btn-bounce flex-1 py-1.5 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 hover:bg-slate-700 transition cursor-pointer';
+            }
+
+            const grid = document.getElementById('shopGrid');
+            grid.innerHTML = '';
+
+            if (activeShopTab === 'runners') {
+                SKINS.forEach(skin => {
+                    const isUnlocked = unlockedSkins.includes(skin.id);
+                    const isEquipped = equippedSkinId === skin.id;
+
+                    const card = document.createElement('div');
+                    card.className = `p-3 rounded-xl border flex flex-col items-center text-center transition ${
+                        isEquipped ? 'bg-slate-800 border-amber-400' : 'bg-slate-800/60 border-slate-700'
+                    }`;
+
+                    card.innerHTML = `
+                        <div class="w-11 h-11 rounded-xl flex items-center justify-center text-xl mb-1.5 shadow-inner" style="background:${skin.body}; border: 2px solid ${skin.accent}">
+                            ${skin.badge}
+                        </div>
+                        <h4 class="font-bold text-xs text-white mb-0.5">${skin.name}</h4>
+                        <p class="text-[11px] font-semibold mb-2 ${isUnlocked ? 'text-emerald-400' : 'text-amber-300'}">
+                            ${isUnlocked ? 'Unlocked' : `🪙 ${skin.price}`}
+                        </p>
+                    `;
+
+                    const actionBtn = document.createElement('button');
+                    if (isEquipped) {
+                        actionBtn.textContent = 'Equipped ✓';
+                        actionBtn.className = 'w-full py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-xs cursor-default';
+                    } else if (isUnlocked) {
+                        actionBtn.textContent = 'Equip';
+                        actionBtn.className = 'btn-bounce w-full py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition cursor-pointer';
+                        actionBtn.onclick = () => {
+                            equippedSkinId = skin.id;
+                            saveProgress();
+                            renderShop();
+                        };
+                    } else {
+                        const canAfford = coins >= skin.price;
+                        actionBtn.textContent = canAfford ? 'Buy Skin' : 'Need Coins';
+                        actionBtn.className = `btn-bounce w-full py-1.5 rounded-lg font-bold text-xs transition ${
+                            canAfford
+                                ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 cursor-pointer'
+                                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                        }`;
+                        if (canAfford) {
+                            actionBtn.onclick = () => {
+                                coins -= skin.price;
+                                unlockedSkins.push(skin.id);
+                                equippedSkinId = skin.id;
+                                SoundFX.playPowerup();
+                                saveProgress();
+                                renderShop();
+                            };
+                        }
+                    }
+
+                    card.appendChild(actionBtn);
+                    grid.appendChild(card);
+                });
+            } else {
+                GUN_SKINS.forEach(gun => {
+                    const isUnlocked = unlockedGunSkins.includes(gun.id);
+                    const isEquipped = equippedGunSkinId === gun.id;
+
+                    const card = document.createElement('div');
+                    card.className = `p-3 rounded-xl border flex flex-col items-center text-center transition ${
+                        isEquipped ? 'bg-slate-800 border-amber-400' : 'bg-slate-800/60 border-slate-700'
+                    }`;
+
+                    card.innerHTML = `
+                        <div class="w-12 h-11 rounded-xl flex flex-col items-center justify-center mb-1.5 shadow-inner relative" style="background:${gun.body}; border: 2px solid ${gun.trim}">
+                            <span class="text-base leading-none">${gun.badge}</span>
+                            <span class="w-6 h-1.5 rounded-full mt-1" style="background:${gun.outer}; box-shadow: 0 0 6px ${gun.outer}"></span>
+                        </div>
+                        <h4 class="font-bold text-xs text-white mb-0.5">${gun.name}</h4>
+                        <p class="text-[11px] font-semibold mb-2 ${isUnlocked ? 'text-emerald-400' : 'text-amber-300'}">
+                            ${isUnlocked ? 'Unlocked' : `🪙 ${gun.price}`}
+                        </p>
+                    `;
+
+                    const actionBtn = document.createElement('button');
+                    if (isEquipped) {
+                        actionBtn.textContent = 'Equipped ✓';
+                        actionBtn.className = 'w-full py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-xs cursor-default';
+                    } else if (isUnlocked) {
+                        actionBtn.textContent = 'Equip Gun';
+                        actionBtn.className = 'btn-bounce w-full py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition cursor-pointer';
+                        actionBtn.onclick = () => {
+                            equippedGunSkinId = gun.id;
+                            saveProgress();
+                            renderShop();
+                        };
+                    } else {
+                        const canAfford = coins >= gun.price;
+                        actionBtn.textContent = canAfford ? 'Buy Design' : 'Need Coins';
+                        actionBtn.className = `btn-bounce w-full py-1.5 rounded-lg font-bold text-xs transition ${
+                            canAfford
+                                ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 cursor-pointer'
+                                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                        }`;
+                        if (canAfford) {
+                            actionBtn.onclick = () => {
+                                coins -= gun.price;
+                                unlockedGunSkins.push(gun.id);
+                                equippedGunSkinId = gun.id;
+                                SoundFX.playPowerup();
+                                saveProgress();
+                                renderShop();
+                            };
+                        }
+                    }
+
+                    card.appendChild(actionBtn);
+                    grid.appendChild(card);
+                });
+            }
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('keydown', e => {
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'Space'].includes(e.code)) {
+                e.preventDefault();
+            }
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+            if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') {
+                if (!keys.up) jumpPressed = true;
+                keys.up = true;
+            }
+            if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+                player.shootFireball();
+            }
+        });
+
+        window.addEventListener('keyup', e => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+            if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') keys.up = false;
+        });
+
+        window.addEventListener('blur', () => {
+            keys.left = false;
+            keys.right = false;
+            keys.up = false;
+        });
+
+        // Mobile Touch Controls
+        const bindTouch = (id, onDown, onUp) => {
+            const el = document.getElementById(id);
+            el.addEventListener('touchstart', e => { e.preventDefault(); onDown(); });
+            el.addEventListener('touchend', e => { e.preventDefault(); if (onUp) onUp(); });
+            el.addEventListener('mousedown', e => { e.preventDefault(); onDown(); });
+            el.addEventListener('mouseup', e => { e.preventDefault(); if (onUp) onUp(); });
+        };
+
+        bindTouch('btnLeft', () => { keys.left = true; }, () => { keys.left = false; });
+        bindTouch('btnRight', () => { keys.right = true; }, () => { keys.right = false; });
+        bindTouch('btnJump', () => { jumpPressed = true; keys.up = true; }, () => { keys.up = false; });
+        bindTouch('btnShoot', () => { player.shootFireball(); });
+
+        // Audio Mute Toggle
+        document.getElementById('muteBtn').onclick = () => {
+            SoundFX.muted = !SoundFX.muted;
+            document.getElementById('muteIcon').textContent = SoundFX.muted ? '🔇' : '🔊';
+        };
+
+        // Modal & Button Controls
+        document.getElementById('startBtn').onclick = () => {
+            SoundFX.init();
+            document.getElementById('startOverlay').classList.add('hidden');
+            loadLevel(currentLevel, false);
+            gameState = 'PLAYING';
+        };
+
+        document.getElementById('nextLevelBtn').onclick = () => {
+            document.getElementById('endOverlay').classList.add('hidden');
+            loadLevel(currentLevel + 1, false);
+            gameState = 'PLAYING';
+        };
+
+        document.getElementById('retryBtn').onclick = () => {
+            document.getElementById('endOverlay').classList.add('hidden');
+            loadLevel(currentLevel, false);
+            gameState = 'PLAYING';
+        };
+
+        const openLevels = () => {
+            renderLevelSelectGrid();
+            document.getElementById('levelSelectModal').classList.remove('hidden');
+        };
+        document.getElementById('openLevelSelectBtn').onclick = openLevels;
+        document.getElementById('startLevelSelectBtn').onclick = openLevels;
+        document.getElementById('endLevelSelectBtn').onclick = openLevels;
+        document.getElementById('closeLevelSelectBtn').onclick = () => {
+            document.getElementById('levelSelectModal').classList.add('hidden');
+        };
+
+        const openShop = () => {
+            renderShop();
+            document.getElementById('shopModal').classList.remove('hidden');
+        };
+        document.getElementById('openShopBtn').onclick = openShop;
+        document.getElementById('startShopBtn').onclick = openShop;
+        document.getElementById('openShopEndBtn').onclick = openShop;
+        document.getElementById('closeShopBtn').onclick = () => {
+            document.getElementById('shopModal').classList.add('hidden');
+        };
+        document.getElementById('tabRunnerSkins').onclick = () => {
+            activeShopTab = 'runners';
+            renderShop();
+        };
+        document.getElementById('tabGunSkins').onclick = () => {
+            activeShopTab = 'guns';
+            renderShop();
+        };
+
+        // Responsive Canvas Sizing
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // Initialize Game
+        window.onload = function() {
+            resizeCanvas();
+            currentLevel = maxUnlockedLevel;
+            loadLevel(currentLevel, false);
+            updateHUD();
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
